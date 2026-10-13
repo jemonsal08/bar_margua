@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#35180f">
+<title>MarGua Bar | Tu mesa</title>
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#fff8f1,#17110e);--card:light-dark(#fff,#241a15);--ink:light-dark(#2b1b14,#fff4e9);--muted:light-dark(#796a61,#c7b8ae);--line:light-dark(#eaded4,#49362b);--orange:#f47721;--gold:#ffc35b;--green:#23844e;--red:#bd4338}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,sans-serif}.hero{background:linear-gradient(135deg,#29140f,#7a2d16);color:#fff;padding:26px 20px 30px;border-radius:0 0 26px 26px}.brand{font-weight:950;font-size:27px;letter-spacing:-.7px}.brand span{color:var(--gold)}.eyebrow{font-size:11px;letter-spacing:2px;font-weight:800;color:#ffd6b0;margin-top:3px}.hero h1{font-size:29px;line-height:1.1;margin:24px 0 8px}.hero p{margin:0;color:#f5ded2;font-size:14px}.wrap{max-width:560px;margin:auto;padding:20px 16px 42px}.table-pill{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:99px;padding:8px 12px;font-weight:800;font-size:13px;margin-bottom:17px}.dot{width:8px;height:8px;background:var(--green);border-radius:50%}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.option{min-height:142px;text-align:left;padding:17px;border:1px solid var(--line);border-radius:18px;background:var(--card);color:var(--ink);cursor:pointer;box-shadow:0 3px 12px #4a1f0b08}.option:active{transform:scale(.985)}.ico{display:grid;place-items:center;width:43px;height:43px;border-radius:13px;background:light-dark(#fff0e3,#462819);font-size:23px;margin-bottom:15px}.option b{display:block;font-size:16px}.option small{display:block;color:var(--muted);font-size:12px;line-height:1.4;margin-top:5px}.panel{margin-top:17px;padding:18px;border:1px solid var(--line);border-radius:18px;background:var(--card);display:none}.panel.show{display:block}.panel h2{font-size:19px;margin:0 0 8px}.muted{color:var(--muted);font-size:13px;line-height:1.5}.field{width:100%;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:11px;padding:12px;font:inherit;margin-top:10px}.btn{border:0;border-radius:11px;padding:12px 15px;background:var(--orange);color:white;font-weight:800;font-size:14px;cursor:pointer;margin-top:10px}.btn.secondary{background:transparent;border:1px solid var(--line);color:var(--ink)}.billrow{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}.total{display:flex;justify-content:space-between;font-size:19px;font-weight:900;padding-top:13px}.status{border-radius:99px;padding:5px 9px;background:light-dark(#e8f6ed,#183626);color:light-dark(#176c3a,#9fe3b7);font-size:12px;font-weight:800;display:inline-block;margin-top:10px}.alert{margin-top:15px;border-radius:12px;padding:12px;font-size:13px;line-height:1.45;display:none}.alert.show{display:block}.alert.error{background:light-dark(#ffebe7,#44211c);color:light-dark(#a93225,#ffb1a6)}.alert.ok{background:light-dark(#e8f6ed,#183626);color:light-dark(#176c3a,#9fe3b7)}footer{text-align:center;color:var(--muted);font-size:11px;line-height:1.5;margin-top:24px}.back{float:right;border:0;background:transparent;color:var(--muted);font-size:22px;cursor:pointer}@media(max-width:360px){.grid{grid-template-columns:1fr}.option{min-height:unset}}
+</style>
+</head>
+<body>
+<header class="hero"><div class="brand">Mar<span>Gua</span></div><div class="eyebrow">BAR · TU MESA, A UN TOQUE</div><h1>¡Bienvenido!</h1><p>¿Qué necesitas? Estamos para atenderte.</p></header>
+<main class="wrap">
+<div class="table-pill"><span class="dot"></span><span id="tableName">Validando tu mesa…</span></div>
+<div class="grid" id="options">
+<button class="option" data-action="mesero"><span class="ico">🔔</span><b>Llamar al mesero</b><small>Solicita atención en tu mesa.</small></button>
+<button class="option" data-action="cuenta"><span class="ico">🧾</span><b>Ver cuenta</b><small>Consulta tus consumos y el total.</small></button>
+<button class="option" data-action="cancion"><span class="ico">🎵</span><b>Pedir canción</b><small>Dinos qué canción te gustaría escuchar.</small></button>
+<button class="option" data-action="especial"><span class="ico">💬</span><b>Solicitud especial</b><small>Escríbenos lo que necesitas.</small></button>
+</div>
+<section class="panel" id="panel"><button class="back" id="back" aria-label="Cerrar">×</button><div id="panelContent"></div></section>
+<div id="alert" class="alert" role="status" aria-live="polite"></div>
+<footer>MarGua Bar · Atención directa desde tu mesa.<br>El código QR identifica la mesa; no compartas el enlace fuera del establecimiento.</footer>
+</main>
+<script>
+const SUPABASE_URL='https://nyiirxtsukekfsznvlmq.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55aWlyeHRzdWtla2Zzem52bG1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5MjE3MTAsImV4cCI6MjEwNzQ5NzcxMH0.wOSjysHXj8JJOR65bwTl9uZ93jlSPyoV9wwgpzqFNJU';
+const token=new URLSearchParams(location.search).get('token');
+const panel=document.getElementById('panel'), content=document.getElementById('panelContent'), alertBox=document.getElementById('alert');
+let mesaInfo=null;
+function alertMsg(text,kind='ok'){alertBox.className='alert show '+kind;alertBox.textContent=text}
+function clearAlert(){alertBox.className='alert';alertBox.textContent=''}
+async function rpc(name,body){const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY},body:JSON.stringify(body)});let data;try{data=await r.json()}catch{data=null}if(!r.ok)throw new Error(data?.message||data?.details||'No pudimos completar la solicitud.');return data}
+function openPanel(html){clearAlert();content.innerHTML=html;panel.classList.add('show');panel.scrollIntoView({behavior:'smooth',block:'nearest'})}
+document.getElementById('back').onclick=()=>panel.classList.remove('show');
+async function loadMesa(){if(!token){document.getElementById('tableName').textContent='QR no configurado';document.querySelectorAll('.option').forEach(b=>b.disabled=true);alertMsg('Este enlace no contiene el código de la mesa. Escanea el QR ubicado en tu mesa.','error');return}try{mesaInfo=await rpc('cliente_mesa',{p_token:token});document.getElementById('tableName').textContent=mesaInfo?.mesa?.nombre||('Mesa '+String(mesaInfo?.mesa?.numero??'').padStart(2,'0'));}catch(e){document.getElementById('tableName').textContent='No se pudo validar la mesa';document.querySelectorAll('.option').forEach(b=>b.disabled=true);alertMsg('No pudimos validar este QR. Pide ayuda al personal del bar.','error')}}
+function money(n){return Number(n||0).toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0})}
+async function sendRequest(type,message){try{await rpc('cliente_solicitud',{p_token:token,p_tipo:type,p_mensaje:message||''});panel.classList.remove('show');alertMsg(type==='mesero'?'¡Listo! Avisamos al mesero.':'¡Solicitud enviada! El personal la recibirá en el panel central.','ok')}catch(e){alertMsg('No pudimos enviar la solicitud: '+e.message,'error')}}
+async function showBill(){openPanel('<h2>Tu cuenta</h2><p class="muted">Consultando los consumos de esta mesa…</p>');try{const d=await rpc('cliente_mesa',{p_token:token});const items=d.consumos||[];let html='<h2>Tu cuenta</h2><p class="muted">'+(d.mesa?.nombre||'Tu mesa')+'</p>';if(!items.length){html+='<p class="muted">Aún no hay consumos registrados en esta cuenta.</p>'}else{items.forEach(x=>{html+='<div class="billrow"><span>'+Number(x.cantidad)+' × '+escapeHtml(x.producto)+'</span><b>'+money(x.subtotal)+'</b></div>'});html+='<div class="total"><span>Total</span><span>'+money(items.reduce((s,x)=>s+Number(x.subtotal||0),0))+'</span></div>'}html+='<p class="muted">Si necesitas ayuda con la cuenta, solicita al mesero.</p>';content.innerHTML=html}catch(e){content.innerHTML='<h2>No pudimos consultar la cuenta</h2><p class="muted">'+escapeHtml(e.message)+'</p>'}}
+function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function songForm(){openPanel('<h2>Pedir canción 🎵</h2><p class="muted">Escribe el nombre de la canción y, si lo sabes, el artista.</p><form id="songForm"><input class="field" name="song" maxlength="300" placeholder="Canción — artista" required><button class="btn" type="submit">Enviar canción</button></form>');document.getElementById('songForm').onsubmit=e=>{e.preventDefault();sendRequest('cancion',new FormData(e.target).get('song').trim())}}
+function specialForm(){openPanel('<h2>Solicitud especial 💬</h2><p class="muted">Cuéntanos qué necesitas. El mensaje llegará al personal del bar.</p><form id="specialForm"><textarea class="field" name="message" maxlength="1000" rows="4" placeholder="Escribe tu mensaje…" required></textarea><button class="btn" type="submit">Enviar solicitud</button></form>');document.getElementById('specialForm').onsubmit=e=>{e.preventDefault();sendRequest('especial',new FormData(e.target).get('message').trim())}}
+document.querySelectorAll('.option').forEach(b=>b.addEventListener('click',()=>{if(!mesaInfo){alertMsg('Estamos validando el QR. Espera un momento.','error');return}switch(b.dataset.action){case'mesero':sendRequest('mesero','El cliente solicita al mesero.');break;case'cuenta':showBill();break;case'cancion':songForm();break;case'especial':specialForm();break}}));
+loadMesa();
+</script>
+</body>
+</html>
