@@ -1,0 +1,207 @@
+INTEGRACIÓN DEL INVENTARIO EN EL PANEL CENTRAL DE MARGUA
+
+IMPORTANTE
+Haz una copia del archivo margua_panel_central.html antes de editarlo. Estos cambios son para el HTML que compartiste. No reemplaces el archivo entero con este instructivo.
+
+1) CAMBIO EN EL HTML: selector de productos para consumos
+
+Busca dentro de la cuenta el formulario actual:
+<form id="addForm" class="formrow"><input id="product" placeholder="Producto / consumo" required><input id="price" type="number" min="1" step="1" placeholder="$ precio" required></form>
+
+Reemplázalo por:
+<form id="addForm" class="formrow">
+  <select id="productSelect" required style="min-width:0;width:100%;padding:11px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)">
+    <option value="">Selecciona un producto del inventario</option>
+  </select>
+  <input id="quantity" type="number" min="0.001" step="0.001" value="1" placeholder="Cantidad" required>
+</form>
+<p class="muted" id="selectedProductInfo">Elige un producto activo del inventario.</p>
+
+2) CAMBIO EN EL HTML: navegación y sección inventario
+
+Dentro de <main id="app" class="wrap hidden">, después del bloque de métricas y antes de <div class="layout">, pega:
+
+<div class="actions" style="margin:18px 0">
+  <button class="btn" id="showCentral">Centro de atención</button>
+  <button class="btn secondary" id="showInventory">Inventario</button>
+</div>
+
+Después, cambia el <div class="layout"> que contiene mesas y solicitudes por:
+<section id="centralView">
+  <div class="layout">
+
+Conserva intacto el contenido original de ese div.layout y sus dos secciones. Al final, donde cierra el div.layout original, agrega el cierre </section>.
+
+Justo después de ese </section>, antes del párrafo final de nota, pega esta vista:
+
+<section id="inventoryView" class="card hidden">
+  <div class="head" style="margin-bottom:16px">
+    <div><h2>Inventario de productos</h2><div class="muted">Catálogo, existencias y movimientos registrados en Supabase.</div></div>
+    <button class="btn secondary" id="reloadInventory">Actualizar inventario</button>
+  </div>
+  <form id="newProductForm" class="card" style="margin-bottom:16px">
+    <h2>Agregar producto</h2>
+    <div class="layout" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+      <input id="newName" placeholder="Nombre del producto" required maxlength="120">
+      <input id="newCategory" placeholder="Categoría (cerveza, gaseosa…)" maxlength="80">
+      <input id="newCost" type="number" min="0" step="1" placeholder="Costo de compra (COP)" required>
+      <input id="newPrice" type="number" min="1" step="1" placeholder="Precio de venta (COP)" required>
+      <input id="newStock" type="number" min="0" step="0.001" placeholder="Stock inicial" required>
+      <input id="newMinStock" type="number" min="0" step="0.001" placeholder="Stock mínimo" value="0" required>
+    </div>
+    <button class="btn" style="margin-top:12px" type="submit">Crear producto</button>
+  </form>
+  <div class="card" style="margin-bottom:16px">
+    <h2>Productos registrados</h2>
+    <input id="inventorySearch" placeholder="Buscar por nombre o categoría…" style="margin-bottom:12px">
+    <div id="inventoryList" class="messages"><div class="empty">Cargando inventario…</div></div>
+  </div>
+  <div class="card">
+    <h2>Registrar movimiento</h2>
+    <form id="movementForm" class="layout" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));align-items:start">
+      <select id="movementProduct" required style="padding:11px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)"><option value="">Selecciona producto</option></select>
+      <select id="movementType" required style="padding:11px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)"><option value="entrada">Entrada / compra</option><option value="salida">Salida / pérdida</option><option value="ajuste">Ajustar stock a cantidad real</option></select>
+      <input id="movementQty" type="number" min="0.001" step="0.001" placeholder="Cantidad" required>
+      <input id="movementReason" placeholder="Motivo (opcional)" maxlength="500">
+      <button class="btn" type="submit">Guardar movimiento</button>
+    </form>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h2>Últimos movimientos</h2>
+    <div id="movementHistory" class="messages"><div class="empty">Cargando historial…</div></div>
+  </div>
+</section>
+
+3) CAMBIOS EN JAVASCRIPT
+
+A. Busca la declaración:
+let currentUser=null, selected=1, mesas=[], cuentas=[], consumos=[], solicitudes=[], mensajes=[], channel=null, busy=false;
+
+Reemplázala por:
+let currentUser=null, selected=1, mesas=[], cuentas=[], consumos=[], solicitudes=[], mensajes=[], productos=[], channel=null, busy=false;
+
+B. En loadData(), cambia la llamada Promise.all actual por esta, que añade la consulta a productos:
+const [mr,cr,sr,msr,pr]=await Promise.all([
+  db.from('mesas').select('*').order('numero'),
+  db.from('cuentas').select('*').eq('estado','abierta'),
+  db.from('solicitudes').select('*').order('creado_at',{ascending:false}).limit(100),
+  db.from('mensajes').select('*').order('creado_at',{ascending:false}).limit(100),
+  db.from('productos').select('*').order('nombre')
+]);
+for(const [r,label] of [[mr,'mesas'],[cr,'cuentas'],[sr,'solicitudes'],[msr,'mensajes'],[pr,'productos']]) if(r.error) throw new Error('Error al leer '+label+': '+r.error.message);
+mesas=mr.data||[]; cuentas=cr.data||[]; solicitudes=sr.data||[]; mensajes=msr.data||[]; productos=pr.data||[];
+
+Conserva el resto de loadData() tal como está. Al final, después de render(), agrega:
+renderInventory();
+
+C. Agrega estas funciones JavaScript antes de la función render():
+
+function productOptions(){
+  const active=productos.filter(p=>p.activo);
+  $('productSelect').innerHTML='<option value="">Selecciona un producto del inventario</option>'+active.map(p=>`<option value="${p.id}">${escapeHtml(p.nombre)} · ${money(p.precio)} · Stock ${Number(p.stock_actual||0)}</option>`).join('');
+  $('movementProduct').innerHTML='<option value="">Selecciona producto</option>'+active.map(p=>`<option value="${p.id}">${escapeHtml(p.nombre)} · Stock ${Number(p.stock_actual||0)}</option>`).join('');
+}
+function renderInventory(){
+  if(!$('inventoryList')) return;
+  productOptions();
+  const q=($('inventorySearch')?.value||'').trim().toLowerCase();
+  const filtered=productos.filter(p=>(p.nombre+' '+(p.categoria||'')).toLowerCase().includes(q));
+  const list=$('inventoryList'); list.innerHTML='';
+  if(!filtered.length){list.innerHTML='<div class="empty">No hay productos que coincidan con la búsqueda.</div>'}
+  filtered.forEach(p=>{
+    const low=Number(p.stock_actual||0)<=Number(p.stock_minimo||0);
+    const d=document.createElement('div'); d.className='msg';
+    d.innerHTML=`<div class="msghead"><b>${escapeHtml(p.nombre)}</b><span class="status ${low?'alert':'busy'}">${low?'Stock bajo':'Disponible'}</span></div><p>${escapeHtml(p.categoria||'Sin categoría')} · Venta: <b>${money(p.precio)}</b> · Costo: ${money(p.costo_compra)}<br>Existencias: <b>${Number(p.stock_actual||0)}</b> · Mínimo: ${Number(p.stock_minimo||0)}${p.activo?'':' · INACTIVO'}</p><div class="actions"><button class="btn secondary" data-edit="${p.id}">Editar</button><button class="btn ${p.activo?'secondary':'done'}" data-toggle="${p.id}">${p.activo?'Desactivar':'Activar'}</button></div>`;
+    list.appendChild(d);
+  });
+  list.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editProduct(Number(b.dataset.edit)));
+  list.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=()=>toggleProduct(Number(b.dataset.toggle)));
+  loadMovementHistory();
+}
+async function editProduct(id){
+  const p=productos.find(x=>Number(x.id)===id); if(!p)return;
+  const nombre=prompt('Nombre del producto:',p.nombre); if(nombre===null)return;
+  if(!nombre.trim())return toast('El nombre no puede estar vacío');
+  const categoria=prompt('Categoría:',p.categoria||''); if(categoria===null)return;
+  const precio=prompt('Precio de venta (COP):',p.precio); if(precio===null)return;
+  const costo=prompt('Costo de compra (COP):',p.costo_compra||0); if(costo===null)return;
+  const minimo=prompt('Stock mínimo:',p.stock_minimo||0); if(minimo===null)return;
+  if(!Number.isFinite(Number(precio))||Number(precio)<=0||!Number.isFinite(Number(costo))||Number(costo)<0||!Number.isFinite(Number(minimo))||Number(minimo)<0)return toast('Revisa los valores numéricos');
+  const r=await db.from('productos').update({nombre:nombre.trim(),categoria:categoria.trim()||null,precio:Number(precio),costo_compra:Number(costo),stock_minimo:Number(minimo)}).eq('id',id);
+  if(r.error)return toast('No se pudo editar: '+r.error.message);
+  await loadData(); toast('Producto actualizado');
+}
+async function toggleProduct(id){
+  const p=productos.find(x=>Number(x.id)===id); if(!p)return;
+  const r=await db.from('productos').update({activo:!p.activo}).eq('id',id);
+  if(r.error)return toast('No se pudo cambiar el estado: '+r.error.message);
+  await loadData(); toast(p.activo?'Producto desactivado':'Producto activado');
+}
+async function loadMovementHistory(){
+  const el=$('movementHistory'); if(!el)return;
+  const r=await db.from('movimientos_inventario').select('id,producto_id,tipo,cantidad,stock_anterior,stock_nuevo,motivo,creado_at').order('creado_at',{ascending:false}).limit(30);
+  if(r.error){el.innerHTML='<div class="empty">No se pudo leer el historial: '+escapeHtml(r.error.message)+'</div>';return}
+  el.innerHTML='';
+  if(!r.data?.length){el.innerHTML='<div class="empty">Todavía no hay movimientos.</div>';return}
+  r.data.forEach(m=>{const p=productos.find(x=>Number(x.id)===Number(m.producto_id));const d=document.createElement('div');d.className='msg';d.innerHTML=`<div class="msghead"><b>${escapeHtml(p?.nombre||('Producto #'+m.producto_id))}</b><span class="tag">${escapeHtml(m.tipo.toUpperCase())}</span></div><p>Cantidad: ${Number(m.cantidad)} · Stock: ${Number(m.stock_anterior)} → ${Number(m.stock_nuevo)}<br>${escapeHtml(m.motivo||'Sin motivo')}</p><span class="muted">${new Date(m.creado_at).toLocaleString('es-CO')}</span>`;el.appendChild(d)});
+}
+
+D. Agrega estos manejadores al final del script, antes de la llamada final (async()=>{try{const {data:{session}}=await db.auth.getSession();...})();:
+
+$('showCentral').onclick=()=>{$('centralView').classList.remove('hidden');$('inventoryView').classList.add('hidden');$('showCentral').classList.remove('secondary');$('showInventory').classList.add('secondary')};
+$('showInventory').onclick=()=>{$('centralView').classList.add('hidden');$('inventoryView').classList.remove('hidden');$('showInventory').classList.remove('secondary');$('showCentral').classList.add('secondary');renderInventory()};
+$('reloadInventory').onclick=()=>loadData().then(()=>toast('Inventario actualizado')).catch(e=>toast(e.message));
+$('inventorySearch').oninput=renderInventory;
+$('productSelect').onchange=()=>{const p=productos.find(x=>String(x.id)===$('productSelect').value);$('selectedProductInfo').textContent=p?`Precio: ${money(p.precio)} · Disponible: ${Number(p.stock_actual||0)} unidades`:'Elige un producto activo del inventario.'};
+$('newProductForm').onsubmit=async e=>{
+  e.preventDefault();
+  const nombre=$('newName').value.trim(), categoria=$('newCategory').value.trim(), costo=Number($('newCost').value), precio=Number($('newPrice').value), stock=Number($('newStock').value), minimo=Number($('newMinStock').value);
+  if(!nombre||costo<0||precio<=0||stock<0||minimo<0)return toast('Verifica los datos del producto');
+  const r=await db.from('productos').insert({nombre,categoria:categoria||null,costo_compra:costo,precio,stock_actual:0,stock_minimo:minimo,activo:true}).select('id').single();
+  if(r.error)return toast('No se pudo crear: '+r.error.message);
+  if(stock>0){const mv=await db.rpc('registrar_movimiento_inventario',{p_producto_id:r.data.id,p_tipo:'ajuste',p_cantidad:stock,p_motivo:'Stock inicial'});if(mv.error){toast('Producto creado, pero falló el stock inicial: '+mv.error.message);await loadData();return}}
+  e.target.reset();$('newMinStock').value='0';await loadData();toast('Producto creado');
+};
+$('movementForm').onsubmit=async e=>{
+  e.preventDefault();const id=Number($('movementProduct').value),tipo=$('movementType').value,cantidad=Number($('movementQty').value),motivo=$('movementReason').value.trim();
+  if(!id||!Number.isFinite(cantidad)||cantidad<=0)return toast('Selecciona producto y cantidad válida');
+  const r=await db.rpc('registrar_movimiento_inventario',{p_producto_id:id,p_tipo:tipo,p_cantidad:cantidad,p_motivo:motivo||null});
+  if(r.error)return toast('No se pudo registrar: '+r.error.message);
+  e.target.reset();await loadData();toast('Movimiento registrado');
+};
+
+E. Reemplaza la función actual de $('addItem').onclick completa por:
+
+$('addForm').addEventListener('submit',e=>e.preventDefault());
+$('addItem').onclick=async()=>{
+  if(busy)return;
+  const p=productos.find(x=>String(x.id)===$('productSelect').value), cantidad=Number($('quantity').value);
+  if(!p)return toast('Selecciona un producto del inventario');
+  if(!Number.isFinite(cantidad)||cantidad<=0)return toast('Ingresa una cantidad válida');
+  if(Number(p.stock_actual||0)<cantidad)return toast('Stock insuficiente. Disponible: '+Number(p.stock_actual||0));
+  const mid=mesaId(selected);if(!mid)return toast('No se encontró la mesa en Supabase');
+  busy=true;$('addItem').disabled=true;
+  try{
+    let c=cuentaAbierta(selected);
+    if(!c){const cr=await db.from('cuentas').insert({mesa_id:mid,estado:'abierta'}).select('*').single();if(cr.error)throw cr.error;c=cr.data}
+    const ir=await db.from('consumos').insert({cuenta_id:c.id,producto_id:p.id,nombre_producto:p.nombre,cantidad,precio_unitario:Number(p.precio)});
+    if(ir.error)throw ir.error;
+    $('productSelect').value='';$('quantity').value='1';$('selectedProductInfo').textContent='Elige un producto activo del inventario.';
+    await loadData();toast('Consumo guardado y stock actualizado');
+  }catch(e){toast('No se pudo guardar: '+e.message)}finally{busy=false;$('addItem').disabled=false}
+};
+
+4) PRUEBAS RECOMENDADAS
+- Inicia sesión como personal autorizado.
+- Crea un producto de prueba con stock inicial 10.
+- Registra una entrada de 5; el stock debe quedar en 15.
+- Desde una mesa agrega 2 unidades de ese producto; debe quedar en 13.
+- Verifica que el historial registre el stock inicial, la entrada y la salida por consumo.
+- Elimina un consumo de prueba solo si confirmas que es correcto; el trigger restaura el stock automáticamente.
+
+NOTAS DE SEGURIDAD Y LIMITACIONES
+- Las políticas RLS de productos deben permitir SELECT para authenticated y la política de gestión creada en el paso anterior.
+- La tabla movimientos_inventario permite SELECT por política; las escrituras se hacen mediante la función RPC.
+- El trigger de consumos se activa con INSERT y DELETE, no con UPDATE. Por ahora no edites cantidad ni producto de un consumo existente directamente.
+- Si crear producto funciona pero falla el stock inicial, el producto queda creado con stock 0; vuelve a abrir Inventario y registra un ajuste con el stock correcto.
+- No pongas la clave service_role en el HTML.
